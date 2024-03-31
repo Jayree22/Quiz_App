@@ -183,37 +183,75 @@ const questions = [
     },
 ]
 
+// Global variables  
 const questionElement = document.getElementById('question');
+
 const answerButtons = document.getElementById('answer-buttons');
+
 const nextButton = document.getElementById('next-btn');
 
-let currentQuestionIndex;
-let score;
 let shuffledQuestions;
+
+let currentQuestionIndex;
+
+let score;
+
 
 // Function to shuffle array
 function shuffleArray(array) {
     return array.sort(() => Math.random() - 0.5);
 }
 
-function saveQuizState() {
+// Initialize State for Progress
+// Function to save progress to local storage
+// Updated Function to save progress to local storage
+function saveProgress() {
+    const userAnswers = [];
+    Array.from(answerButtons.children).forEach((button, index) => {
+        if (button.classList.contains("correct") || button.classList.contains("incorrect")) {
+            userAnswers.push({
+                questionIndex: currentQuestionIndex,
+                selectedAnswer: button.innerText
+            });
+        }
+    });
+
     const quizState = {
         questions: shuffledQuestions,
-        currentIndex: currentQuestionIndex
+        currentIndex: currentQuestionIndex,
+        score: score,
+        userAnswers: userAnswers
     };
-    localStorage.setItem('quizState', JSON.stringify(quizState));
+
+    localStorage.setItem('quizProgress', JSON.stringify(quizState));
 }
 
-// Function to reset local storage
-function resetLocalStorage() {
-    localStorage.removeItem('quizState');
+// Function to start the quiz from saved progress
+function startQuizFrom(savedState) {
+    // Update the quiz state with the saved progress
+    shuffledQuestions = savedState.questions;
+    currentQuestionIndex = savedState.currentIndex;
+    score = savedState.score || 0; // If score was saved, use it, otherwise start from 0
+
+    // Continue the quiz from the saved question index
+    showQuestion();
+}
+
+// Function to load progress from local storage
+function loadProgress() {
+    const savedProgress = localStorage.getItem('quizProgress');
+    return savedProgress ? JSON.parse(savedProgress) : null;
+}
+
+// Function to reset progress
+function resetProgress() {
+    localStorage.removeItem('quizProgress');
 }
 
 // Function to start the quiz
 function startQuiz() {
-    // Retrieve the progress from local storage
-    const savedState = localStorage.getItem('quizState');
-    const savedAnswer = localStorage.getItem('userAnswer');
+    // Retrieve Progress on Page Load
+    const savedState = localStorage.getItem('quizProgress');
     if (savedState) {
         const parsedState = JSON.parse(savedState);
         shuffledQuestions = parsedState.questions;
@@ -225,24 +263,7 @@ function startQuiz() {
         shuffledQuestions = shuffleArray(questions);
         showQuestion();
     }
-
-    // If there's a saved answer, mark it in the UI
-    if (savedAnswer) {
-        const parsedAnswer = JSON.parse(savedAnswer);
-        if (parsedAnswer.questionIndex === currentQuestionIndex) {
-            const answerButtonsArray = Array.from(answerButtons.children);
-            const selectedButton = answerButtonsArray[parsedAnswer.answerIndex];
-            if (parsedAnswer.isCorrect) {
-                selectedButton.classList.add("correct");
-            } else {
-                selectedButton.classList.add("incorrect");
-            }
-            // Disable all buttons after showing the saved answer
-            answerButtonsArray.forEach(button => button.disabled = true);
-            nextButton.style.display = "block";
-        }
-    }
-}
+} 
 
 // Function to show a question
 function showQuestion() {
@@ -269,17 +290,14 @@ function resetState() {
     while (answerButtons.firstChild) {
         answerButtons.removeChild(answerButtons.firstChild);
     }
-}
+    // Reset the progress
+    resetProgress();
+} 
 
 // Function to handle the selection of an answer
 function selectAnswer(e) {
     const selectedBtn = e.target;
     const isCorrect = selectedBtn.dataset.correct === "true";
-    const answerIndex = Array.from(answerButtons.children).indexOf(selectedBtn);
-    
-    // Save the user's answer and question index in local storage
-    localStorage.setItem('userAnswer', JSON.stringify({ questionIndex: currentQuestionIndex, answerIndex, isCorrect }));
-
     if (isCorrect) {
         selectedBtn.classList.add("correct");
         score++;
@@ -293,12 +311,14 @@ function selectAnswer(e) {
         button.disabled = true;
     });
     nextButton.style.display = "block";
+    // Save the updated progress
+    saveProgress();
 }
 
 // Function to show the final score
 function showScore() {
     resetState();
-    questionElement.innerHTML = `Congratulations!!! You have scored ${score} out of ${shuffledQuestions.length}!`;
+    questionElement.innerHTML = `Congratulations!!! You have scored ${score} out of ${shuffledQuestions.length}`;
     nextButton.innerHTML = "Play Again";
     nextButton.style.display = "block";
 }
@@ -318,6 +338,11 @@ function handleNextButton() {
 
 // Event listener for the "Next" button
 nextButton.addEventListener("click", () => {
+    const progress = loadProgress();
+    if (progress) {
+        // Resume quiz from saved progress
+        startQuizFrom(progress);
+    }
     if (currentQuestionIndex < shuffledQuestions.length) {
         handleNextButton();
     } else {

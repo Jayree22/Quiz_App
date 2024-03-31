@@ -7,15 +7,18 @@
 body{
     /* background: #001e4d; */
     background: url(./Images/library-with-books.jpg);
-    background-position: top;
+    background-position: center;
     background-size: cover;
     background-repeat: no-repeat;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
 }
 .app{
     background: #fff;
     width: 90%;
     max-width: 600px;
-    margin: 100px auto 0;
     border-radius: 10px;
     padding: 30px;
 }
